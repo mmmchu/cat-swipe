@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cat } from "lucide-react";
-import CatCard from "../components/CatCard";
+import { CatCard } from "../components/CatCard";
 import SwipeButtons from "../components/SwipeButtons";
 import Summary from "../components/Summary";
 
@@ -87,14 +87,14 @@ const Index = () => {
         style={{ height: "calc(100vh - 280px)" }}
       >
         <AnimatePresence>
-          {cats.slice(currentIndex, currentIndex + 2).map((cat, index) => (
-            <CatCard
-              key={currentIndex + index}
-              imageUrl={cat}
-              onSwipe={handleSwipe}
-              isTop={index === 0}
-            />
-          ))}
+    {cats[currentIndex] && (
+        <CatCard
+            key={currentIndex}
+            imageUrl={cats[currentIndex]}
+            onSwipe={handleSwipe}
+            isTop={true}
+        />
+        )}
         </AnimatePresence>
       </div>
 
