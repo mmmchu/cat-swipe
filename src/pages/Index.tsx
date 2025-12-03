@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cat } from "lucide-react";
 import { CatCard } from "../components/CatCard";
 import SwipeButtons from "../components/SwipeButtons";
 import Summary from "../components/Summary";
-import { Box, Container, Stack, Title, Text } from "@mantine/core";
+import { Box, Container, Stack, Title, Text, Button } from "@mantine/core";
 
 const TOTAL_CATS = 10;
+const CATS_PER_PAGE = 10;
 
 const Index = () => {
   const [cats, setCats] = useState<string[]>(() =>
@@ -18,20 +19,45 @@ const Index = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedCats, setLikedCats] = useState<string[]>([]);
   const [showSummary, setShowSummary] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const isSwipingRef = useRef(false);
 
-  const loadCats = () => {
+  const loadCats = (page: number = 1) => {
     const newCats = Array.from(
-      { length: TOTAL_CATS },
-      (_, i) => `https://cataas.com/cat?${Date.now()}-${i}`
+      { length: CATS_PER_PAGE },
+      (_, i) => `https://cataas.com/cat?${Date.now()}-${page}-${i}`
     );
 
     setCats(newCats);
     setCurrentIndex(0);
     setLikedCats([]);
     setShowSummary(false);
+    setCurrentPage(page);
+  };
+
+  const loadMoreCats = () => {
+    const nextPage = currentPage + 1;
+    const newCats = Array.from(
+      { length: CATS_PER_PAGE },
+      (_, i) => `https://cataas.com/cat?${Date.now()}-${nextPage}-${i}`
+    );
+    setCats((prev) => [...prev, ...newCats]);
+    setCurrentPage(nextPage);
+  };
+
+  const refreshCurrentImage = () => {
+    const newCats = [...cats];
+    newCats[
+      currentIndex
+    ] = `https://cataas.com/cat?${Date.now()}-refresh-${currentIndex}`;
+    setCats(newCats);
   };
 
   const handleSwipe = (direction: "left" | "right") => {
+    // Prevent multiple rapid swipes
+    if (isSwipingRef.current) return;
+    isSwipingRef.current = true;
+
     if (direction === "right") {
       setLikedCats((prev) => [...prev, cats[currentIndex]]);
     }
@@ -41,6 +67,11 @@ const Index = () => {
     } else {
       setShowSummary(true);
     }
+
+    // Reset after animation completes
+    setTimeout(() => {
+      isSwipingRef.current = false;
+    }, 500);
   };
 
   const handleRestart = () => loadCats();
@@ -61,10 +92,15 @@ const Index = () => {
         justifyContent: "center",
         padding: "1rem",
         paddingBottom: "100px",
+        overflowX: "hidden",
+        width: "100%",
       }}
     >
       {/* Header */}
-      <Container size="sm" style={{ textAlign: "center", marginBottom: "2rem" }}>
+      <Container
+        size="sm"
+        style={{ textAlign: "center", marginBottom: "2rem" }}
+      >
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -79,7 +115,10 @@ const Index = () => {
                 marginBottom: "0.5rem",
               }}
             >
-              <Cat className="h-6 w-6 md:h-8 md:w-8" style={{ color: "#2563eb" }} />
+              <Cat
+                className="h-6 w-6 md:h-8 md:w-8"
+                style={{ color: "#2563eb" }}
+              />
               <Title
                 order={1}
                 style={{
@@ -90,12 +129,43 @@ const Index = () => {
                 Purrfect Match
               </Title>
             </Box>
-            <Text c="dimmed" size="sm" style={{ fontSize: "clamp(0.875rem, 2vw, 1rem)" }}>
+            <Text
+              c="dimmed"
+              size="sm"
+              style={{ fontSize: "clamp(0.875rem, 2vw, 1rem)" }}
+            >
               Swipe to find your favourite cats
+            </Text>
+            <Text
+              c="dimmed"
+              size="xs"
+              style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}
+            >
+              {cats.length - currentIndex} cats remaining
             </Text>
           </Stack>
         </motion.div>
       </Container>
+
+      {/* Pagination and Load More - Above cards */}
+      {currentIndex >= cats.length - 3 && cats.length - currentIndex > 0 && (
+        <Box
+          style={{
+            marginBottom: "1rem",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <Button
+            onClick={loadMoreCats}
+            variant="light"
+            size="sm"
+            style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}
+          >
+            Load More Cats
+          </Button>
+        </Box>
+      )}
 
       {/* Card Stack */}
       <Box
@@ -108,16 +178,28 @@ const Index = () => {
           minHeight: "min(400px, 50vh)",
           maxHeight: "70vh",
           flex: 1,
+          overflow: "hidden",
         }}
       >
-        <AnimatePresence mode="popLayout">
-          {cats[currentIndex] !== undefined && (
-            <CatCard
-              key={`${cats[currentIndex]}-${currentIndex}`}
-              imageUrl={cats[currentIndex]}
-              onSwipe={handleSwipe}
-              isTop={true}
-            />
+        <AnimatePresence initial={false}>
+          {/* Render up to 3 cards in the stack (current + 2 behind) */}
+          {Array.from(
+            { length: Math.min(3, cats.length - currentIndex) },
+            (_, i) => {
+              const index = currentIndex + i;
+              if (cats[index] === undefined) return null;
+
+              return (
+                <CatCard
+                  key={`${cats[index]}-${index}-${currentIndex}`}
+                  imageUrl={cats[index]}
+                  onSwipe={handleSwipe}
+                  isTop={i === 0}
+                  stackIndex={i}
+                  onRefresh={i === 0 ? refreshCurrentImage : undefined}
+                />
+              );
+            }
           )}
         </AnimatePresence>
       </Box>
