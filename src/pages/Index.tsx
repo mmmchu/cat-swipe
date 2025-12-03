@@ -4,6 +4,7 @@ import { Cat } from "lucide-react";
 import { CatCard } from "../components/CatCard";
 import SwipeButtons from "../components/SwipeButtons";
 import Summary from "../components/Summary";
+import { Box, Container, Stack, Title, Text } from "@mantine/core";
 
 const TOTAL_CATS = 10;
 
@@ -49,46 +50,99 @@ const Index = () => {
   }
 
   return (
-    <div className="relative min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+    <Box
+      style={{
+        position: "relative",
+        minHeight: "100vh",
+        backgroundColor: "#f9fafb",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "1rem",
+        paddingBottom: "100px",
+      }}
+    >
       {/* Header */}
-      <header className="text-center mb-8">
+      <Container size="sm" style={{ textAlign: "center", marginBottom: "2rem" }}>
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="flex items-center justify-center gap-2 mb-2"
         >
-          <Cat className="h-8 w-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-blue-600">Purrfect Match</h1>
+          <Stack gap="xs" align="center">
+            <Box
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <Cat className="h-6 w-6 md:h-8 md:w-8" style={{ color: "#2563eb" }} />
+              <Title
+                order={1}
+                style={{
+                  fontSize: "clamp(1.5rem, 4vw, 2rem)",
+                  color: "#2563eb",
+                }}
+              >
+                Purrfect Match
+              </Title>
+            </Box>
+            <Text c="dimmed" size="sm" style={{ fontSize: "clamp(0.875rem, 2vw, 1rem)" }}>
+              Swipe to find your favourite cats
+            </Text>
+          </Stack>
         </motion.div>
-        <p className="text-gray-600">Swipe to find your favourite cats</p>
-      </header>
+      </Container>
 
       {/* Card Stack */}
-      <div className="relative w-full flex items-center justify-center h-[calc(100vh-280px)]">
-        <AnimatePresence>
-          {cats[currentIndex] && (
+      <Box
+        style={{
+          position: "relative",
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "min(400px, 50vh)",
+          maxHeight: "70vh",
+          flex: 1,
+        }}
+      >
+        <AnimatePresence mode="popLayout">
+          {cats[currentIndex] !== undefined && (
             <CatCard
-              key={cats[currentIndex]} // unique key for AnimatePresence
+              key={`${cats[currentIndex]}-${currentIndex}`}
               imageUrl={cats[currentIndex]}
               onSwipe={handleSwipe}
               isTop={true}
             />
           )}
         </AnimatePresence>
-      </div>
+      </Box>
 
       {/* Buttons */}
-      <motion.div
+      <Box
+        component={motion.div}
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed bottom-8 left-0 right-0 flex justify-center gap-4"
+        style={{
+          position: "fixed",
+          bottom: "1rem",
+          left: 0,
+          right: 0,
+          display: "flex",
+          justifyContent: "center",
+          padding: "0 1rem",
+        }}
       >
         <SwipeButtons
           onLike={() => handleSwipe("right")}
           onDislike={() => handleSwipe("left")}
         />
-      </motion.div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

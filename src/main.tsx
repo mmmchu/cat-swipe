@@ -1,18 +1,16 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import { MantineProvider } from '@mantine/core';
-import type { MantineThemeOverride } from '@mantine/core';
-import '@mantine/core/styles.css';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import { MantineProvider } from "@mantine/core";
+import type { MantineThemeOverride } from "@mantine/core";
+import "@mantine/core/styles.css";
 
-// Optional: customize theme
 const theme: MantineThemeOverride = {
-  primaryColor: 'blue',
-  fontFamily: 'Arial, sans-serif',
-  // Add other theme customizations here
+  primaryColor: "blue",
+  fontFamily: "Arial, sans-serif",
 };
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <MantineProvider theme={theme}>
       <App />
