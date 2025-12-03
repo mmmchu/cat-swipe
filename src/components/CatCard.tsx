@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import { Heart, X } from "lucide-react";
 import type { PanInfo } from "framer-motion";
@@ -21,13 +21,22 @@ export const CatCard = ({ imageUrl, onSwipe, isTop }: CatCardProps) => {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const prevImageUrlRef = useRef<string>(imageUrl);
 
   // Reset exit direction and loading state when imageUrl changes (new card)
   useEffect(() => {
-    setExitDirection(null);
-    setIsLoading(true);
-    setHasError(false);
-    x.set(0);
+    // Only reset if imageUrl actually changed
+    if (prevImageUrlRef.current !== imageUrl) {
+      prevImageUrlRef.current = imageUrl;
+
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        setExitDirection(null);
+        setIsLoading(true);
+        setHasError(false);
+        x.set(0);
+      }, 0);
+    }
 
     // Timeout fallback for images that take too long to load
     let isMounted = true;
