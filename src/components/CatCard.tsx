@@ -98,39 +98,29 @@ export const CatCard = ({
     }
   };
 
-  const handleDragEnd = (
-    _: MouseEvent | TouchEvent | PointerEvent,
-    info: PanInfo
-  ) => {
-    // Prevent handling if already exiting
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
     if (exitDirection) return;
 
     const { x: offsetX } = info.offset;
     const { x: velocityX } = info.velocity;
-    const threshold = 50; // Lower threshold for easier swiping
-    const velocityThreshold = 500; // Velocity threshold for quick swipes
+    const threshold = 50;
+    const velocityThreshold = 500;
 
     // Check if user swiped far enough or with enough velocity
     if (
       Math.abs(offsetX) > threshold ||
       Math.abs(velocityX) > velocityThreshold
     ) {
-      // Direction logic:
-      // - offsetX > 0 means dragged to the RIGHT (positive x direction) = LIKE
-      // - offsetX < 0 means dragged to the LEFT (negative x direction) = DISLIKE
-      // When swiping RIGHT (like), card should exit to the RIGHT (positive x: 1000)
-      // When swiping LEFT (dislike), card should exit to the LEFT (negative x: -1000)
-      const direction = offsetX > 0 ? "right" : "left";
+      // Use the current x motion value to determine direction
+      // x.get() > 0 means card is to the RIGHT (user dragged right) = LIKE = exit RIGHT
+      // x.get() < 0 means card is to the LEFT (user dragged left) = DISLIKE = exit LEFT
+      const currentX = x.get();
+      const direction = currentX > 0 ? "right" : "left";
 
-      // Set exit direction immediately - this disables drag and triggers exit animation
       setExitDirection(direction);
-
-      // Call onSwipe after a brief delay to ensure state updates
-      setTimeout(() => {
-        onSwipe(direction);
-      }, 10);
+      setTimeout(() => onSwipe(direction), 50);
     } else {
-      // If not swiped far enough, snap back to center smoothly
+      // If not swiped far enough, snap back to center
       x.set(0);
     }
   };
