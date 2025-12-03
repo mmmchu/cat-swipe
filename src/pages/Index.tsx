@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cat } from "lucide-react";
 import { CatCard } from "../components/CatCard";
@@ -8,68 +8,50 @@ import Summary from "../components/Summary";
 const TOTAL_CATS = 10;
 
 const Index = () => {
-  const [cats, setCats] = useState<string[]>([]);
+  const [cats, setCats] = useState<string[]>(() =>
+    Array.from(
+      { length: TOTAL_CATS },
+      (_, i) => `https://cataas.com/cat?${Date.now()}-${i}`
+    )
+  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedCats, setLikedCats] = useState<string[]>([]);
   const [showSummary, setShowSummary] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadCats();
-  }, []);
 
   const loadCats = () => {
-    setIsLoading(true);
-
-    const catUrls = Array.from(
+    const newCats = Array.from(
       { length: TOTAL_CATS },
       (_, i) => `https://cataas.com/cat?${Date.now()}-${i}`
     );
 
-    setCats(catUrls);
+    setCats(newCats);
     setCurrentIndex(0);
     setLikedCats([]);
     setShowSummary(false);
-    setIsLoading(false);
   };
 
   const handleSwipe = (direction: "left" | "right") => {
     if (direction === "right") {
-      setLikedCats([...likedCats, cats[currentIndex]]);
+      setLikedCats((prev) => [...prev, cats[currentIndex]]);
     }
 
     if (currentIndex < cats.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      setCurrentIndex((prev) => prev + 1);
     } else {
       setShowSummary(true);
     }
   };
 
-  const handleRestart = () => {
-    loadCats();
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        >
-          <Cat className="h-12 w-12 text-blue-600" />
-        </motion.div>
-      </div>
-    );
-  }
+  const handleRestart = () => loadCats();
 
   if (showSummary) {
     return <Summary likedCats={likedCats} onRestart={handleRestart} />;
   }
 
   return (
-    <div className="relative min-h-screen bg-gray-50">
+    <div className="relative min-h-screen bg-gray-50 flex flex-col items-center justify-center">
       {/* Header */}
-      <header className="text-center pt-8 pb-4">
+      <header className="text-center mb-8">
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -82,19 +64,16 @@ const Index = () => {
       </header>
 
       {/* Card Stack */}
-      <div
-        className="relative mx-auto max-w-md px-6 pt-8 pb-32"
-        style={{ height: "calc(100vh - 280px)" }}
-      >
+      <div className="relative w-full flex items-center justify-center h-[calc(100vh-280px)]">
         <AnimatePresence>
-    {cats[currentIndex] && (
-        <CatCard
-            key={currentIndex}
-            imageUrl={cats[currentIndex]}
-            onSwipe={handleSwipe}
-            isTop={true}
-        />
-        )}
+          {cats[currentIndex] && (
+            <CatCard
+              key={cats[currentIndex]} // unique key for AnimatePresence
+              imageUrl={cats[currentIndex]}
+              onSwipe={handleSwipe}
+              isTop={true}
+            />
+          )}
         </AnimatePresence>
       </div>
 
@@ -102,7 +81,7 @@ const Index = () => {
       <motion.div
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed bottom-8 left-0 right-0"
+        className="fixed bottom-8 left-0 right-0 flex justify-center gap-4"
       >
         <SwipeButtons
           onLike={() => handleSwipe("right")}
