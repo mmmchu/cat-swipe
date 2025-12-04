@@ -1,4 +1,5 @@
-import { Container, Title, Image, SimpleGrid, Button, Stack } from "@mantine/core";
+import { Container, Title, Text, Image, SimpleGrid, Button, Stack } from "@mantine/core";
+
 
 interface SummaryProps {
   likedCats: string[];

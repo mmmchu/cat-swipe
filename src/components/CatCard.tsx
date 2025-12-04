@@ -8,8 +8,33 @@ interface CatCardProps {
   imageUrl: string;
   onSwipe: (direction: "left" | "right") => void;
   isTop: boolean;
-  stackIndex?: number; // 0 = top card, 1 = second card, etc.
-  onRefresh?: () => void; // Callback to refresh the image
+  stackIndex?: number;
+  onRefresh?: () => void;
+  nextImages?: string[];
+}
+
+function useImagePreloader(url: string) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!url) return;
+
+    setLoaded(false);
+    setError(false);
+
+    const img = new Image();
+    img.src = url;
+    img.onload = () => setLoaded(true);
+    img.onerror = () => setError(true);
+
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [url]);
+
+  return { loaded, error };
 }
 
 export const CatCard = ({
@@ -18,150 +43,78 @@ export const CatCard = ({
   isTop,
   stackIndex = 0,
   onRefresh,
+  nextImages = [],
 }: CatCardProps) => {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-20, 20]);
-  // For top card, use drag-based opacity; for cards behind, use static opacity
-  const dragOpacity = useTransform(
-    x,
-    [-200, -100, 0, 100, 200],
-    [0, 1, 1, 1, 0]
-  );
-  const staticOpacity = Math.max(0.4, 0.7 - stackIndex * 0.15);
+  const dragOpacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
   const likeOpacity = useTransform(x, [0, 100], [0, 1]);
   const dislikeOpacity = useTransform(x, [-100, 0], [1, 0]);
-  const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(
-    null
-  );
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const [imageKey, setImageKey] = useState(0); // Key to force image reload
+
+  const staticOpacity = stackIndex === 0 ? 1 : Math.max(0.6, 0.9 - stackIndex * 0.1);
+
+  const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
+  const [imageKey, setImageKey] = useState(0);
   const [refreshTimestamp, setRefreshTimestamp] = useState(0);
   const prevImageUrlRef = useRef<string>(imageUrl);
 
-  // Reset exit direction and loading state when imageUrl changes (new card)
+  const { loaded, error } = useImagePreloader(
+    refreshTimestamp > 0 ? `${imageUrl}&retry=${refreshTimestamp}` : imageUrl
+  );
+
   useEffect(() => {
-    // Only reset if imageUrl actually changed
+    nextImages.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, [nextImages]);
+
+  useEffect(() => {
     if (prevImageUrlRef.current !== imageUrl) {
       prevImageUrlRef.current = imageUrl;
-
-      // Use setTimeout to avoid synchronous setState in effect
-      setTimeout(() => {
-        setImageKey(0); // Reset image key when URL changes
-        setRefreshTimestamp(0); // Reset refresh timestamp
-        setExitDirection(null);
-        setIsLoading(true);
-        setHasError(false);
-        x.set(0);
-      }, 0);
+      x.set(0);
+      setExitDirection(null);
+      setImageKey(0);
+      setRefreshTimestamp(0);
     }
-
-    // Timeout fallback for images that take too long to load
-    // Only set error if still loading after timeout
-    let isMounted = true;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-    if (isLoading && !hasError) {
-      timeoutId = setTimeout(() => {
-        if (isMounted && isLoading) {
-          setIsLoading(false);
-          setHasError(true);
-        }
-      }, 15000); // Increased to 15 second timeout
-    }
-
-    return () => {
-      isMounted = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [imageUrl, x, isLoading, hasError]);
-
-  const handleImageLoad = () => {
-    setIsLoading(false);
-    setHasError(false);
-  };
-
-  const handleImageError = () => {
-    setIsLoading(false);
-    setHasError(true);
-  };
+  }, [imageUrl, x]);
 
   const handleRefresh = () => {
-    setIsLoading(true);
-    setHasError(false);
-    setImageKey((prev) => prev + 1); // Force image reload by changing key
-    setRefreshTimestamp(Date.now()); // Store timestamp for cache busting
-    if (onRefresh) {
-      onRefresh();
-    }
+    setImageKey((prev) => prev + 1);
+    setRefreshTimestamp(Date.now());
+    onRefresh?.();
   };
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     if (exitDirection) return;
 
-    const { x: offsetX } = info.offset;
-    const { x: velocityX } = info.velocity;
+    const { offset, velocity } = info;
     const threshold = 50;
     const velocityThreshold = 500;
 
-    // Check if user swiped far enough or with enough velocity
-    if (
-      Math.abs(offsetX) > threshold ||
-      Math.abs(velocityX) > velocityThreshold
-    ) {
-      // Use the current x motion value to determine direction
-      // x.get() > 0 means card is to the RIGHT (user dragged right) = LIKE = exit RIGHT
-      // x.get() < 0 means card is to the LEFT (user dragged left) = DISLIKE = exit LEFT
+    if (Math.abs(offset.x) > threshold || Math.abs(velocity.x) > velocityThreshold) {
       const currentX = x.get();
       const direction = currentX > 0 ? "right" : "left";
-
       setExitDirection(direction);
       setTimeout(() => onSwipe(direction), 50);
     } else {
-      // If not swiped far enough, snap back to center
       x.set(0);
     }
   };
 
-  // Calculate stack styling for cards behind
-  const stackOffset = stackIndex * 8; // Offset in pixels for each card behind
-  const stackScale = 1 - stackIndex * 0.05; // Slightly smaller for each card behind
-  const stackZIndex = 10 - stackIndex; // Lower z-index for cards behind
+  const stackZIndex = 10 - stackIndex;
+
+  const isInteractiveTopCard = isTop && loaded && !exitDirection && !error;
 
   return (
     <motion.div
-      drag={isTop && !exitDirection ? "x" : false}
+      drag={isInteractiveTopCard ? "x" : false}
       dragElastic={0.1}
       dragMomentum={false}
       dragDirectionLock={true}
       dragConstraints={{ left: -1000, right: 1000 }}
       onDragEnd={handleDragEnd}
       whileDrag={{ cursor: "grabbing" }}
-      animate={
-        exitDirection
-          ? {
-              x: exitDirection === "right" ? 1000 : -1000,
-              opacity: 0,
-              scale: 0.8,
-              transition: {
-                duration: 0.3,
-                ease: "easeIn",
-                x: { duration: 0.3, ease: "easeIn" },
-              },
-            }
-          : {
-              scale: stackIndex === 0 ? 1 : stackScale,
-              y: stackIndex === 0 ? 0 : stackOffset,
-              transition: {
-                duration: 0.2,
-                type: "spring",
-                stiffness: 400,
-                damping: 25,
-              },
-            }
-      }
       style={{
         x,
         rotate,
@@ -171,17 +124,9 @@ export const CatCard = ({
         height: "min(400px, 70vh)",
         maxWidth: "100%",
         position: "absolute",
-        cursor: isTop ? "grab" : "default",
-        touchAction: isTop && !exitDirection ? "pan-x" : "auto",
-      }}
-      exit={{
-        x: exitDirection === "right" ? 1000 : -1000,
-        opacity: 0,
-        scale: 0.8,
-        transition: {
-          duration: 0.3,
-          ease: "easeIn",
-        },
+        cursor: isInteractiveTopCard ? "grab" : "default",
+        pointerEvents: isInteractiveTopCard ? "auto" : "none",
+        touchAction: isInteractiveTopCard ? "pan-x" : "none",
       }}
     >
       <Card
@@ -194,11 +139,9 @@ export const CatCard = ({
           position: "relative",
           overflow: "hidden",
           background: "transparent",
-          pointerEvents: "auto",
         }}
       >
-        {/* Loading State */}
-        {isLoading && (
+        {!loaded && !error && (
           <Center
             style={{
               position: "absolute",
@@ -212,8 +155,7 @@ export const CatCard = ({
           </Center>
         )}
 
-        {/* Error State */}
-        {hasError && (
+        {error && (
           <Center
             style={{
               position: "absolute",
@@ -222,46 +164,29 @@ export const CatCard = ({
               zIndex: 1,
               flexDirection: "column",
               gap: "1rem",
-              pointerEvents: "none",
             }}
           >
             <Text c="dimmed" size="sm">
               Failed to load image
             </Text>
             {isTop && (
-              <Button
-                leftSection={<RefreshCw size={16} />}
-                onClick={handleRefresh}
-                size="sm"
-                variant="light"
-                style={{ pointerEvents: "auto" }}
-              >
+              <Button leftSection={<RefreshCw size={16} />} onClick={handleRefresh} size="sm" variant="light">
                 Retry
               </Button>
             )}
           </Center>
         )}
 
-        {/* Cat Image */}
-        <img
-          key={`${imageUrl}-${imageKey}`}
-          src={`${imageUrl}${
-            refreshTimestamp > 0 ? `&retry=${refreshTimestamp}` : ""
-          }`}
-          alt="Cat"
-          onLoad={handleImageLoad}
-          onError={handleImageError}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            pointerEvents: "none",
-            display: isLoading || hasError ? "none" : "block",
-          }}
-        />
+        {loaded && !error && (
+          <img
+            key={`${imageUrl}-${imageKey}`}
+            src={imageUrl}
+            alt="Cat"
+            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "16px", pointerEvents: "none" }}
+          />
+        )}
 
-        {/* Like Overlay */}
-        {!isLoading && !hasError && (
+        {isInteractiveTopCard && (
           <motion.div
             style={{
               opacity: likeOpacity,
@@ -275,12 +200,11 @@ export const CatCard = ({
               zIndex: 2,
             }}
           >
-            <Heart className="h-12 w-12 md:h-16 md:w-16 fill-green-500 stroke-green-500" />
+            <Heart className="h-16 w-16 fill-green-500 stroke-green-500" />
           </motion.div>
         )}
 
-        {/* Dislike Overlay */}
-        {!isLoading && !hasError && (
+        {isInteractiveTopCard && (
           <motion.div
             style={{
               opacity: dislikeOpacity,
@@ -294,7 +218,7 @@ export const CatCard = ({
               zIndex: 2,
             }}
           >
-            <X className="h-12 w-12 md:h-16 md:w-16 stroke-red-500 stroke-[3]" />
+            <X className="h-16 w-16 stroke-red-500 stroke-[3]" />
           </motion.div>
         )}
       </Card>

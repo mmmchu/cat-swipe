@@ -16,6 +16,7 @@ const Index = () => {
       (_, i) => `https://cataas.com/cat?${Date.now()}-${i}`
     )
   );
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedCats, setLikedCats] = useState<string[]>([]);
   const [showSummary, setShowSummary] = useState(false);
@@ -27,7 +28,6 @@ const Index = () => {
       { length: CATS_PER_PAGE },
       (_, i) => `https://cataas.com/cat?${Date.now()}-${page}-${i}`
     );
-
     setCats(newCats);
     setCurrentIndex(0);
     setLikedCats([]);
@@ -47,14 +47,11 @@ const Index = () => {
 
   const refreshCurrentImage = () => {
     const newCats = [...cats];
-    newCats[
-      currentIndex
-    ] = `https://cataas.com/cat?${Date.now()}-refresh-${currentIndex}`;
+    newCats[currentIndex] = `https://cataas.com/cat?${Date.now()}-refresh-${currentIndex}`;
     setCats(newCats);
   };
 
   const handleSwipe = (direction: "left" | "right") => {
-    // Prevent multiple rapid swipes
     if (isSwipingRef.current) return;
     isSwipingRef.current = true;
 
@@ -62,13 +59,14 @@ const Index = () => {
       setLikedCats((prev) => [...prev, cats[currentIndex]]);
     }
 
-    if (currentIndex < cats.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-    } else {
+    const isLast = currentIndex >= cats.length - 1;
+
+    if (isLast) {
       setShowSummary(true);
+    } else {
+      setCurrentIndex((prev) => prev + 1);
     }
 
-    // Reset after animation completes
     setTimeout(() => {
       isSwipingRef.current = false;
     }, 500);
@@ -85,7 +83,7 @@ const Index = () => {
       style={{
         position: "relative",
         minHeight: "100vh",
-        backgroundColor: "#f9fafb",
+   backgroundColor: "#E5F3FD",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -96,15 +94,8 @@ const Index = () => {
         width: "100%",
       }}
     >
-      {/* Header */}
-      <Container
-        size="sm"
-        style={{ textAlign: "center", marginBottom: "2rem" }}
-      >
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-        >
+      <Container size="sm" style={{ textAlign: "center", marginBottom: "2rem" }}>
+        <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
           <Stack gap="xs" align="center">
             <Box
               style={{
@@ -115,10 +106,7 @@ const Index = () => {
                 marginBottom: "0.5rem",
               }}
             >
-              <Cat
-                className="h-6 w-6 md:h-8 md:w-8"
-                style={{ color: "#2563eb" }}
-              />
+              <Cat className="h-6 w-6 md:h-8 md:w-8" style={{ color: "#2563eb" }} />
               <Title
                 order={1}
                 style={{
@@ -126,48 +114,27 @@ const Index = () => {
                   color: "#2563eb",
                 }}
               >
-                Purrfect Match
+                Cat Matching
               </Title>
             </Box>
-            <Text
-              c="dimmed"
-              size="sm"
-              style={{ fontSize: "clamp(0.875rem, 2vw, 1rem)" }}
-            >
+            <Text c="dimmed" size="sm" style={{ fontSize: "clamp(0.875rem, 2vw, 1rem)" }}>
               Swipe to find your favourite cats
             </Text>
-            <Text
-              c="dimmed"
-              size="xs"
-              style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}
-            >
+            <Text c="dimmed" size="xs" style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}>
               {cats.length - currentIndex} cats remaining
             </Text>
           </Stack>
         </motion.div>
       </Container>
 
-      {/* Pagination and Load More - Above cards */}
       {currentIndex >= cats.length - 3 && cats.length - currentIndex > 0 && (
-        <Box
-          style={{
-            marginBottom: "1rem",
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <Button
-            onClick={loadMoreCats}
-            variant="light"
-            size="sm"
-            style={{ fontSize: "clamp(0.75rem, 2vw, 0.875rem)" }}
-          >
+        <Box style={{ marginBottom: "1rem", display: "flex", justifyContent: "center" }}>
+          <Button onClick={loadMoreCats} variant="light" size="sm">
             Load More Cats
           </Button>
         </Box>
       )}
 
-      {/* Card Stack */}
       <Box
         style={{
           position: "relative",
@@ -182,29 +149,24 @@ const Index = () => {
         }}
       >
         <AnimatePresence initial={false}>
-          {/* Render up to 3 cards in the stack (current + 2 behind) */}
-          {Array.from(
-            { length: Math.min(3, cats.length - currentIndex) },
-            (_, i) => {
-              const index = currentIndex + i;
-              if (cats[index] === undefined) return null;
+          {Array.from({ length: Math.min(3, cats.length - currentIndex) }, (_, i) => {
+            const actualIndex = currentIndex + i;
+            const url = cats[actualIndex];
 
-              return (
-                <CatCard
-                  key={`${cats[index]}-${index}-${currentIndex}`}
-                  imageUrl={cats[index]}
-                  onSwipe={handleSwipe}
-                  isTop={i === 0}
-                  stackIndex={i}
-                  onRefresh={i === 0 ? refreshCurrentImage : undefined}
-                />
-              );
-            }
-          )}
+            return (
+              <CatCard
+                key={`${url}-${actualIndex}`}
+                imageUrl={url}
+                onSwipe={handleSwipe}
+                isTop={i === 0}
+                stackIndex={i}
+                onRefresh={i === 0 ? refreshCurrentImage : undefined}
+              />
+            );
+          })}
         </AnimatePresence>
       </Box>
 
-      {/* Buttons */}
       <Box
         component={motion.div}
         initial={{ y: 50, opacity: 0 }}
